@@ -94,12 +94,22 @@ All 13 required queries tested against the live agent connected to MongoDB Atlas
 
 ### Q4 — Staff Competency Assessment
 **Query:** `What are the staff competency assessment requirements?`
-**Tool called:** `list_sections` (fallback after Voyage AI rate limit) → `get_standard_by_chapter` (MS.4, MS.5, MS.6)
+**Tool called:** `search_standards` → 5 results
 
 **Agent Response:**
-> Agent gracefully handled a Voyage AI rate limit error by falling back to `list_sections` and `get_standard_by_chapter` tools to retrieve relevant Medical Staff chapters (MS.4, MS.5, MS.6) covering competency assessment requirements.
+> **[SR.2 — Surgical Requirements]** Organizations must perform competency assessments both initially and on an ongoing basis as defined by organization policy.
+>
+> **[SR.2a — Surgical Requirements]** Assessment must evaluate current key competencies necessary for the job position as determined by the organization.
+>
+> **[SR.4.1 — Surgical Requirements]** Distinguishes between:
+> - **Performance Appraisal**: Overall employee evaluation measuring ability to perform all job duties
+> - **Competency Assessment**: Evaluation of current key competencies required for technical aspects of job duties
+>
+> **[SR.5 — Surgical Requirements]** Organizations must document in staff personnel records that training and demonstration of competency were successfully completed.
+>
+> **[SR.4b — Surgical Requirements]** Outcomes of aggregated competency data must be reported to Quality Management Oversight to monitor staff performance improvement.
 
-⚠️ **Status:** PARTIAL PASS — Voyage AI rate limit hit during embedding; agent successfully fell back to alternate tools. Full answer retrieved via chapter lookup.
+✅ **Status:** PASS — Full semantic search answer with detailed citations (re-tested after initial rate limit issue)
 
 ---
 
@@ -263,7 +273,7 @@ All 13 required queries tested against the live agent connected to MongoDB Atlas
 | 1 | Quality improvement programs | Q&A | ✅ PASS |
 | 2 | Infection control for surgical areas | Q&A | ✅ PASS |
 | 3 | Medication errors | Q&A | ✅ PASS |
-| 4 | Staff competency assessment | Q&A | ⚠️ PARTIAL (rate limit, graceful fallback) |
+| 4 | Staff competency assessment | Q&A | ✅ PASS |
 | 5 | Patient rights and responsibilities | Q&A | ✅ PASS |
 | 6 | Show me chapter QM.1 | Citation | ✅ PASS |
 | 7 | What does chapter LS.2 say exactly? | Citation | ✅ PASS |
@@ -274,8 +284,7 @@ All 13 required queries tested against the live agent connected to MongoDB Atlas
 | 12 | Hand hygiene chapter + exact wording | Edge Case (Discovery) | ✅ PASS |
 | 13 | Chapters related to patient safety | Edge Case (Ambiguous) | ✅ PASS |
 
-**11/13 PASS · 2/13 PARTIAL PASS · 0 FAIL**
+**12/13 PASS · 1/13 PARTIAL PASS · 0 FAIL**
 
 ### Notes on Partial Results
-- **Q4**: Voyage AI rate limit (3 RPM free tier) hit during concurrent queries. Agent gracefully fell back to `list_sections` + `get_standard_by_chapter` tools and still retrieved relevant content.
-- **Q8**: IC.3 exists in the PDF only as a table-of-contents entry — the full text was not embedded as a separate chunk. Agent correctly informed the user and provided related content from semantic search.
+- **Q8**: IC.3 exists in the NIAHO PDF only as a table-of-contents entry pointing to page 271. The full chapter text was not extractable as a separate chunk during PDF parsing. Agent correctly informed the user and offered to search for related content — this is graceful handling of a PDF structure limitation, not an agent failure.
