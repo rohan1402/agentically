@@ -38,6 +38,20 @@ const MODEL = "claude-sonnet-4-20250514";
 const MAX_TOKENS = 4096;
 const TOP_K = parseInt(process.env.TOP_K ?? "5");
 
+// ─── Cost Tracking ─────────────────────────────────────────────────────────────
+// Pricing for claude-sonnet-4 (per 1M tokens)
+const COST_PER_M_INPUT = 3.0;   // $3.00 / 1M input tokens
+const COST_PER_M_OUTPUT = 15.0; // $15.00 / 1M output tokens
+
+interface TurnCost {
+  inputTokens: number;
+  outputTokens: number;
+  estimatedUSD: number;
+}
+
+// Session-level accumulator (resets on process exit)
+const sessionCost = { inputTokens: 0, outputTokens: 0, estimatedUSD: 0 };
+
 // ─── Tool Definitions (JSON Schema for Claude) ─────────────────────────────────
 
 const tools: Anthropic.Tool[] = [
@@ -218,9 +232,26 @@ async function runAgentTurn(
   client: Anthropic,
   userMessage: string,
   history: Message[]
-): Promise<string> {
+): Promise<{ text: string; cost: TurnCost }> {
   // Append the user's message to history
   history.push({ role: "user", content: userMessage });
+
+  // Per-turn cost accumulator (covers all API calls within this turn)
+  const turnCost: TurnCost = { inputTokens: 0, outputTokens: 0, estimatedUSD: 0 };
+
+  const accumulateUsage = (usage: Anthropic.Usage) => {
+    turnCost.inputTokens  += usage.input_tokens;
+    turnCost.outputTokens += usage.output_tokens;
+    turnCost.estimatedUSD =
+      (turnCost.inputTokens  / 1_000_000) * COST_PER_M_INPUT +
+      (turnCost.outputTokens / 1_000_000) * COST_PER_M_OUTPUT;
+    // Roll up into session total
+    sessionCost.inputTokens  += usage.input_tokens;
+    sessionCost.outputTokens += usage.output_tokens;
+    sessionCost.estimatedUSD =
+      (sessionCost.inputTokens  / 1_000_000) * COST_PER_M_INPUT +
+      (sessionCost.outputTokens / 1_000_000) * COST_PER_M_OUTPUT;
+  };
 
   // Agent loop — keeps iterating as long as the model wants to call tools
   while (true) {
@@ -231,6 +262,8 @@ async function runAgentTurn(
       tools,
       messages: history,
     });
+
+    accumulateUsage(response.usage);
 
     // Append assistant's response to history
     history.push({ role: "assistant", content: response.content });
@@ -275,11 +308,14 @@ async function runAgentTurn(
       const textBlock = response.content.find(
         (block): block is Anthropic.TextBlock => block.type === "text"
       );
-      return textBlock?.text ?? "(No response generated)";
+      return {
+        text: textBlock?.text ?? "(No response generated)",
+        cost: turnCost,
+      };
     }
 
     // Unexpected stop reason
-    return `(Unexpected stop reason: ${response.stop_reason})`;
+    return { text: `(Unexpected stop reason: ${response.stop_reason})`, cost: turnCost };
   }
 }
 
@@ -328,9 +364,19 @@ async function main() {
 
       try {
         console.log("\nAgent: thinking...");
-        const response = await runAgentTurn(client, trimmed, history);
-        console.log(`\nAgent: ${response}\n`);
-        console.log("─".repeat(60) + "\n");
+        const { text, cost } = await runAgentTurn(client, trimmed, history);
+        console.log(`\nAgent: ${text}\n`);
+        console.log(
+          `  💰 This query: ${cost.inputTokens.toLocaleString()} in + ` +
+          `${cost.outputTokens.toLocaleString()} out tokens` +
+          ` ≈ $${cost.estimatedUSD.toFixed(5)}`
+        );
+        console.log(
+          `  📊 Session total: ${sessionCost.inputTokens.toLocaleString()} in + ` +
+          `${sessionCost.outputTokens.toLocaleString()} out tokens` +
+          ` ≈ $${sessionCost.estimatedUSD.toFixed(5)}`
+        );
+        console.log("\n" + "─".repeat(60) + "\n");
       } catch (error) {
         const msg = error instanceof Error ? error.message : String(error);
         console.error(`\nAgent Error: ${msg}\n`);

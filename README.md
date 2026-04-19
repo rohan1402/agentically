@@ -4,6 +4,21 @@ An **agentic RAG (Retrieval-Augmented Generation)** system that answers natural-
 
 ---
 
+## Screenshots
+
+### MongoDB Atlas — Cluster & Collection
+![Atlas Cluster](screenshots/atlas-cluster.png)
+*healthcare-agent M0 cluster · Active · 2 search indexes in use*
+
+![Atlas Collection](screenshots/atlas-collection.png)
+*niaho_standards.standards · 1919 documents · embedding Array(1024) visible*
+
+### Vector Search Index
+![Vector Search Index](screenshots/vector-search-index.png)
+*vector_index · READY · vectorSearch type · "embedding" + "metadata.chapter" fields · 1919 (100%) indexed*
+
+---
+
 ## Architecture
 
 ```
@@ -160,14 +175,18 @@ Agent: [exact lookup → returns verbatim text]
 ```
 healthcare-standards-agent/
 ├── src/
-│   ├── agent.ts          # Agent loop, tool definitions, system prompt, CLI
-│   └── tools.ts          # Tool implementations (MongoDB + Voyage AI)
-├── seed-database.ts      # PDF ingestion pipeline
+│   ├── agent.ts             # Agent loop, tool definitions, system prompt, CLI
+│   ├── tools.ts             # Tool implementations (MongoDB + Voyage AI)
+│   └── voyage-embeddings.ts # Endpoint routing for Atlas vs standard Voyage keys
+├── atlas-trigger/
+│   └── auto-embed.js        # Atlas Database Trigger for real-time auto-embedding
+├── screenshots/             # Atlas UI screenshots (cluster, collection, vector index)
+├── seed-database.ts         # PDF ingestion pipeline
 ├── package.json
 ├── tsconfig.json
 ├── .env.example
 ├── README.md
-└── TEST_RESULTS.md       # All 13+ test queries with outputs
+└── TEST_RESULTS.md          # All 13 test queries with outputs (13/13 PASS)
 ```
 
 ---
@@ -232,6 +251,60 @@ The chunker automatically skips table-of-contents entries (short chunks containi
 
 ---
 
+## Scaling to Production
+
+This project runs on MongoDB Atlas M0 (free tier) and Voyage AI's free embedding quota, which is sufficient for the NIAHO dataset (~1919 chunks). Here's how it scales:
+
+| Concern | Current (M0 / free) | Production path |
+|---------|---------------------|-----------------|
+| **Cluster size** | M0 — 512 MB storage, shared RAM | Upgrade to M10+ for dedicated RAM, higher throughput, and replica sets |
+| **Vector index throughput** | ~100 QPS on M0 | M10+ removes QPS cap; Atlas Search Nodes isolate search from OLTP load |
+| **Embedding latency** | ~200–400 ms per query (free Voyage AI) | Voyage AI paid tier: higher RPM, lower P99 latency |
+| **Chunk volume** | 1919 documents | Atlas Vector Search scales to billions of vectors with HNSW sharding |
+| **Concurrent users** | Single process / single connection | Add a connection pool (e.g., `maxPoolSize: 50` in MongoClient options) + deploy agent behind a REST API (Express / Fastify) |
+| **New document ingestion** | Manual re-seed via `npm run seed` | Atlas Database Trigger (see below) auto-embeds on every insert — zero downtime updates |
+| **Query caching** | None | Cache frequent `search_standards` results in Redis with a short TTL (e.g., 60 s) |
+| **Cost at scale** | ~$0–$2 for this project | At 10K queries/day on M10+: ~$50–$100/month (Atlas) + Claude API usage |
+
+### Connection pooling (one-line change)
+```typescript
+// src/tools.ts — add to MongoClient options
+const client = new MongoClient(MONGODB_URI, { maxPoolSize: 50, minPoolSize: 5 });
+```
+
+---
+
+## Atlas Auto-Embedding Trigger
+
+The file `atlas-trigger/auto-embed.js` contains a **MongoDB Atlas Database Trigger** that automatically generates embeddings whenever a new document is inserted without one — eliminating the need to re-run `npm run seed` after incremental updates.
+
+### How it works
+```
+New document inserted (no embedding field)
+         │
+         ▼
+  Atlas Trigger fires
+         │
+         ▼
+  Voyage AI API called → 1024-dim vector returned
+         │
+         ▼
+  document.embedding updated in-place
+```
+
+### Deploy steps
+1. Atlas UI → **App Services** → **Triggers** → **Add Trigger**
+2. Trigger type: **Database**
+3. Cluster: `healthcare-agent` · DB: `niaho_standards` · Collection: `standards`
+4. Operation type: **Insert Document** · enable **Full Document**
+5. Paste `atlas-trigger/auto-embed.js` into the Function editor
+6. Add a secret **`VOYAGE_API_KEY`** in App Services → Values & Secrets (use your `al-` key)
+7. Save — the trigger is live immediately, no deployment needed
+
+After this is active, you can insert raw documents (text + metadata, no embedding) and the trigger handles embedding automatically within seconds.
+
+---
+
 ## Bonus Features Implemented
 
 - ✅ **Hybrid query mode** — Detects when user wants both explanation AND exact text
@@ -239,3 +312,5 @@ The chunker automatically skips table-of-contents entries (short chunks containi
 - ✅ **Section browsing** — `list_sections` with optional filter
 - ✅ **Graceful fallback** — Missing chapters fall back to semantic search with suggestions
 - ✅ **Conversation memory** — Full message history maintained across turns in a session
+- ✅ **Per-query cost tracking** — Prints token usage and estimated USD cost after every response; accumulates a session-level running total
+- ✅ **Atlas auto-embedding Trigger** — `atlas-trigger/auto-embed.js` ready to deploy; auto-generates embeddings on insert without re-seeding
