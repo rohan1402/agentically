@@ -11,6 +11,7 @@ import * as path from "path";
 import { MongoClient } from "mongodb";
 import pdfParse from "pdf-parse";
 import dotenv from "dotenv";
+import { getVoyageEmbeddingsUrl } from "./src/voyage-embeddings";
 
 dotenv.config();
 
@@ -25,6 +26,12 @@ const EMBEDDING_DIMENSIONS = 1024;
 
 // Approximate max tokens per chunk (Voyage AI context window is 32k, keeping chunks manageable)
 const MAX_CHUNK_TOKENS = 800;
+
+// Rate limit config — free tier without payment method: 3 RPM, 10K TPM
+// Larger batch size = fewer requests = respects 3 RPM limit
+// 21s delay between batches = ~2.8 RPM (safely under 3 RPM)
+const BATCH_SIZE = 50;          // ~50 chunks × ~18 tokens = ~900 tokens/request (under 10K TPM)
+const BATCH_DELAY_MS = 21000;   // 21 seconds between requests to stay under 3 RPM
 
 // ─── Types ─────────────────────────────────────────────────────────────────────
 
@@ -59,7 +66,7 @@ function estimateTokens(text: string): number {
  * Batches requests to avoid rate limits
  */
 async function generateEmbeddings(texts: string[]): Promise<number[][]> {
-  const response = await fetch("https://api.voyageai.com/v1/embeddings", {
+  const response = await fetch(getVoyageEmbeddingsUrl(), {
     method: "POST",
     headers: {
       Authorization: `Bearer ${VOYAGE_API_KEY}`,
@@ -261,22 +268,24 @@ async function main() {
     const chunks = await extractChunks(pdfPath);
 
     // Process in batches to respect Voyage AI rate limits
-    const BATCH_SIZE = 10;
+    // Free tier (no payment method): 3 RPM → 21s delay, batch size 50
+    const totalBatches = Math.ceil(chunks.length / BATCH_SIZE);
+    const estimatedMinutes = Math.ceil((totalBatches * BATCH_DELAY_MS) / 60000);
     const documents: StandardDocument[] = [];
 
     console.log(
       `\n🧠 Generating embeddings with Voyage AI (${VOYAGE_MODEL})...`
     );
-    console.log(
-      `  Processing ${chunks.length} chunks in batches of ${BATCH_SIZE}`
-    );
+    console.log(`  Processing ${chunks.length} chunks in ${totalBatches} batches of ${BATCH_SIZE}`);
+    console.log(`  Estimated time: ~${estimatedMinutes} min (rate-limited to 3 RPM on free tier)\n`);
 
     for (let i = 0; i < chunks.length; i += BATCH_SIZE) {
       const batch = chunks.slice(i, i + BATCH_SIZE);
       const batchTexts = batch.map((c) => c.text);
+      const batchNum = Math.floor(i / BATCH_SIZE) + 1;
 
-      console.log(
-        `  Batch ${Math.floor(i / BATCH_SIZE) + 1}/${Math.ceil(chunks.length / BATCH_SIZE)}...`
+      process.stdout.write(
+        `  Batch ${batchNum}/${totalBatches} (${Math.round((batchNum / totalBatches) * 100)}%)... `
       );
 
       // Generate embeddings for this batch
@@ -298,9 +307,9 @@ async function main() {
         });
       });
 
-      // Small delay between batches to be respectful of rate limits
+      // Wait between batches to stay under 3 RPM rate limit
       if (i + BATCH_SIZE < chunks.length) {
-        await new Promise((r) => setTimeout(r, 200));
+        await new Promise((r) => setTimeout(r, BATCH_DELAY_MS));
       }
     }
 
