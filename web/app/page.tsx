@@ -77,12 +77,12 @@ export default function LandingPage() {
             <span className="text-xl">🏥</span>
             <span className="font-semibold text-gray-900 text-sm">Healthcare Standards Agent</span>
           </div>
-          <Link
-            href="/demo"
+          <a
+            href="mailto:rohan.pant14@gmail.com?subject=Agentically — Demo Request"
             className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors"
           >
-            Try Demo →
-          </Link>
+            Request Demo →
+          </a>
         </div>
       </nav>
 
@@ -102,14 +102,14 @@ export default function LandingPage() {
             no more manual PDF searching.
           </p>
           <div className="flex flex-col sm:flex-row gap-3 justify-center">
-            <Link
-              href="/demo"
-              className="px-6 py-3 bg-blue-600 text-white font-medium rounded-xl hover:bg-blue-700 transition-colors"
-            >
-              Try the Live Demo →
-            </Link>
             <a
               href="mailto:rohan.pant14@gmail.com?subject=Agentically — Demo Request"
+              className="px-6 py-3 bg-blue-600 text-white font-medium rounded-xl hover:bg-blue-700 transition-colors"
+            >
+              Request a Demo →
+            </a>
+            <a
+              href="mailto:rohan.pant14@gmail.com?subject=Agentically — Pilot Request"
               className="px-6 py-3 bg-white text-gray-700 font-medium rounded-xl border border-gray-200 hover:border-gray-300 hover:bg-gray-50 transition-colors"
             >
               Request a Pilot
@@ -207,12 +207,12 @@ export default function LandingPage() {
             Try the live demo with NIAHO standards, or get in touch to run a pilot on your own compliance library.
           </p>
           <div className="flex flex-col sm:flex-row gap-3 justify-center">
-            <Link
-              href="/demo"
+            <a
+              href="mailto:rohan.pant14@gmail.com?subject=Agentically — Demo Request"
               className="px-6 py-3 bg-white text-blue-600 font-medium rounded-xl hover:bg-blue-50 transition-colors"
             >
-              Try Live Demo →
-            </Link>
+              Request a Demo →
+            </a>
             <a
               href="mailto:rohan.pant14@gmail.com?subject=Agentically — Pilot Request"
               className="px-6 py-3 bg-blue-500 text-white font-medium rounded-xl border border-blue-400 hover:bg-blue-400 transition-colors"
