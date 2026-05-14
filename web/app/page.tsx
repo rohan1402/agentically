@@ -1,157 +1,247 @@
-"use client";
+import Link from "next/link";
 
-import { useState, useRef, useEffect, FormEvent } from "react";
-import ChatMessage from "@/components/ChatMessage";
-import TypingIndicator from "@/components/TypingIndicator";
+// ─── Feature cards ────────────────────────────────────────────────────────────
 
-interface Message {
-  role: "user" | "assistant";
-  content: string;
-}
-
-const EXAMPLE_QUERIES = [
-  "What are the infection control requirements?",
-  "Show me chapter QM.1",
-  "How should medication errors be handled?",
-  "List all available sections",
+const features = [
+  {
+    icon: "🔍",
+    title: "Semantic Search",
+    desc: "Understands meaning, not just keywords. Ask naturally and get relevant results even when exact words don't match.",
+  },
+  {
+    icon: "📄",
+    title: "Exact Citations",
+    desc: "Returns verbatim regulatory text on demand — no AI-generated summaries, no paraphrasing. Always citable.",
+  },
+  {
+    icon: "⚡",
+    title: "Instant Answers",
+    desc: "Responses in 3–8 seconds. No more digging through hundreds of PDF pages to find one requirement.",
+  },
+  {
+    icon: "🗂️",
+    title: "Any Document Set",
+    desc: "Works with NIAHO, Joint Commission, CMS, internal SOPs — any compliance library you throw at it.",
+  },
+  {
+    icon: "💬",
+    title: "Conversation Memory",
+    desc: "Ask follow-up questions naturally. The agent remembers context across your entire session.",
+  },
+  {
+    icon: "🔒",
+    title: "Your Data, Your Control",
+    desc: "Documents stay in your own database. No third-party training on your sensitive compliance content.",
+  },
 ];
 
-export default function Home() {
-  const [messages, setMessages] = useState<Message[]>([]);
-  const [history, setHistory] = useState<Message[]>([]);
-  const [input, setInput] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+// ─── How it works steps ───────────────────────────────────────────────────────
 
-  const bottomRef = useRef<HTMLDivElement>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
+const steps = [
+  {
+    number: "01",
+    title: "Upload your documents",
+    desc: "Send us your compliance PDFs — NIAHO, Joint Commission, internal SOPs, anything. We index them in hours.",
+  },
+  {
+    number: "02",
+    title: "Ask in plain English",
+    desc: "Your staff types questions naturally. No training needed, no special syntax, no search operators.",
+  },
+  {
+    number: "03",
+    title: "Get cited answers",
+    desc: "Precise answers with exact chapter references. Every response is traceable back to the source document.",
+  },
+];
 
-  // Auto-scroll to latest message
-  useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages, isLoading]);
+// ─── Use cases ────────────────────────────────────────────────────────────────
 
-  const sendMessage = async (text: string) => {
-    if (!text.trim() || isLoading) return;
+const useCases = [
+  { role: "Compliance Officers", example: "\"What are the documentation requirements for surgical consent?\"" },
+  { role: "Nursing Staff", example: "\"Show me the infection control protocols for IV insertion.\"" },
+  { role: "Hospital Administrators", example: "\"List all quality management chapters and their requirements.\"" },
+  { role: "New Staff Onboarding", example: "\"What does the patient rights section say about grievances?\"" },
+];
 
-    setError(null);
-    const userMessage: Message = { role: "user", content: text.trim() };
-    setMessages((prev) => [...prev, userMessage]);
-    setInput("");
-    setIsLoading(true);
+// ─── Page ─────────────────────────────────────────────────────────────────────
 
-    try {
-      const res = await fetch("/api/chat", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message: text.trim(), history }),
-      });
-
-      const data = await res.json();
-
-      if (!res.ok) throw new Error(data.error || "Failed to get a response");
-
-      setMessages((prev) => [...prev, { role: "assistant", content: data.text }]);
-      setHistory(data.history);
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : "Something went wrong";
-      setError(msg);
-      setMessages((prev) => [
-        ...prev,
-        { role: "assistant", content: `⚠️ Error: ${msg}` },
-      ]);
-    } finally {
-      setIsLoading(false);
-      inputRef.current?.focus();
-    }
-  };
-
-  const handleSubmit = (e: FormEvent) => {
-    e.preventDefault();
-    sendMessage(input);
-  };
-
+export default function LandingPage() {
   return (
-    <div className="flex flex-col h-screen bg-gray-50">
-      {/* ── Header ── */}
-      <header className="bg-white border-b border-gray-200 px-6 py-4 flex-shrink-0 shadow-sm">
-        <div className="max-w-3xl mx-auto flex items-center gap-3">
-          <div className="w-9 h-9 rounded-xl bg-blue-600 flex items-center justify-center text-white text-lg flex-shrink-0">
-            🏥
+    <div className="min-h-screen bg-white text-gray-900 font-sans">
+
+      {/* ── Nav ── */}
+      <nav className="border-b border-gray-100 px-6 py-4 sticky top-0 bg-white/95 backdrop-blur-sm z-10">
+        <div className="max-w-5xl mx-auto flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <span className="text-xl">🏥</span>
+            <span className="font-semibold text-gray-900 text-sm">Healthcare Standards Agent</span>
           </div>
-          <div>
-            <h1 className="text-base font-semibold text-gray-900 leading-tight">
-              Healthcare Standards Agent
-            </h1>
-            <p className="text-xs text-gray-400 mt-0.5">
-              NIAHO Compliance · Claude + MongoDB Atlas Vector Search
-            </p>
-          </div>
-        </div>
-      </header>
-
-      {/* ── Chat area ── */}
-      <main className="flex-1 overflow-y-auto">
-        <div className="max-w-3xl mx-auto px-4 py-6 space-y-4">
-
-          {/* Empty state with example queries */}
-          {messages.length === 0 && !isLoading && (
-            <div className="text-center py-16">
-              <p className="text-sm font-medium text-gray-500 mb-6">
-                Ask a question or pick an example below
-              </p>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-w-xl mx-auto">
-                {EXAMPLE_QUERIES.map((q) => (
-                  <button
-                    key={q}
-                    onClick={() => sendMessage(q)}
-                    disabled={isLoading}
-                    className="text-left text-sm px-4 py-3 rounded-xl border border-gray-200 bg-white text-gray-600 hover:border-blue-300 hover:text-blue-700 hover:bg-blue-50 transition-colors disabled:opacity-40"
-                  >
-                    {q}
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Messages */}
-          {messages.map((msg, i) => (
-            <ChatMessage key={i} role={msg.role} content={msg.content} />
-          ))}
-
-          {/* Typing indicator */}
-          {isLoading && <TypingIndicator />}
-
-          <div ref={bottomRef} />
-        </div>
-      </main>
-
-      {/* ── Input bar ── */}
-      <div className="bg-white border-t border-gray-200 px-4 py-4 flex-shrink-0">
-        {error && (
-          <p className="max-w-3xl mx-auto text-xs text-red-500 mb-2 px-1">{error}</p>
-        )}
-        <form onSubmit={handleSubmit} className="max-w-3xl mx-auto flex gap-3">
-          <input
-            ref={inputRef}
-            type="text"
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            placeholder="Ask about NIAHO standards…"
-            disabled={isLoading}
-            className="flex-1 px-4 py-3 rounded-xl border border-gray-300 bg-gray-50 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:opacity-50 transition"
-            autoFocus
-          />
-          <button
-            type="submit"
-            disabled={!input.trim() || isLoading}
-            className="px-5 py-3 bg-blue-600 text-white text-sm font-medium rounded-xl hover:bg-blue-700 active:bg-blue-800 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+          <Link
+            href="/demo"
+            className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors"
           >
-            Send
-          </button>
-        </form>
-      </div>
+            Try Demo →
+          </Link>
+        </div>
+      </nav>
+
+      {/* ── Hero ── */}
+      <section className="px-6 py-24 text-center">
+        <div className="max-w-3xl mx-auto">
+          <div className="inline-block px-3 py-1 bg-blue-50 text-blue-700 text-xs font-medium rounded-full mb-6">
+            Powered by Claude + MongoDB Atlas Vector Search
+          </div>
+          <h1 className="text-4xl sm:text-5xl font-bold text-gray-900 leading-tight mb-6">
+            Your compliance documents,{" "}
+            <span className="text-blue-600">answered instantly</span>
+          </h1>
+          <p className="text-lg text-gray-500 leading-relaxed mb-10 max-w-2xl mx-auto">
+            AI-powered search for NIAHO and healthcare accreditation standards.
+            Ask in plain English, get precise cited answers in seconds —
+            no more manual PDF searching.
+          </p>
+          <div className="flex flex-col sm:flex-row gap-3 justify-center">
+            <Link
+              href="/demo"
+              className="px-6 py-3 bg-blue-600 text-white font-medium rounded-xl hover:bg-blue-700 transition-colors"
+            >
+              Try the Live Demo →
+            </Link>
+            <a
+              href="mailto:rohan.pant14@gmail.com?subject=Agentically — Demo Request"
+              className="px-6 py-3 bg-white text-gray-700 font-medium rounded-xl border border-gray-200 hover:border-gray-300 hover:bg-gray-50 transition-colors"
+            >
+              Request a Pilot
+            </a>
+          </div>
+        </div>
+      </section>
+
+      {/* ── Problem ── */}
+      <section className="px-6 py-16 bg-gray-50">
+        <div className="max-w-4xl mx-auto text-center">
+          <h2 className="text-2xl font-bold text-gray-900 mb-4">
+            Compliance search is broken
+          </h2>
+          <p className="text-gray-500 mb-12 max-w-2xl mx-auto">
+            Healthcare staff spend hours manually searching through hundreds of pages of accreditation
+            standards to find a single requirement — and they still risk citing the wrong version.
+          </p>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+            {[
+              { stat: "Hours", label: "lost per week searching compliance docs" },
+              { stat: "500+", label: "pages in a typical accreditation standards manual" },
+              { stat: "High risk", label: "of citing outdated or incorrect requirements" },
+            ].map((item) => (
+              <div key={item.label} className="bg-white rounded-2xl p-6 border border-gray-200">
+                <div className="text-2xl font-bold text-blue-600 mb-2">{item.stat}</div>
+                <div className="text-sm text-gray-500">{item.label}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ── How it works ── */}
+      <section className="px-6 py-20">
+        <div className="max-w-4xl mx-auto">
+          <div className="text-center mb-14">
+            <h2 className="text-2xl font-bold text-gray-900 mb-3">How it works</h2>
+            <p className="text-gray-500">Live in under a week. No training required for your staff.</p>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-8">
+            {steps.map((step) => (
+              <div key={step.number} className="text-center">
+                <div className="text-4xl font-bold text-blue-100 mb-3">{step.number}</div>
+                <h3 className="font-semibold text-gray-900 mb-2">{step.title}</h3>
+                <p className="text-sm text-gray-500 leading-relaxed">{step.desc}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ── Features ── */}
+      <section className="px-6 py-20 bg-gray-50">
+        <div className="max-w-5xl mx-auto">
+          <div className="text-center mb-14">
+            <h2 className="text-2xl font-bold text-gray-900 mb-3">Built for healthcare compliance</h2>
+            <p className="text-gray-500">Every feature designed around how compliance teams actually work.</p>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+            {features.map((f) => (
+              <div key={f.title} className="bg-white rounded-2xl p-6 border border-gray-200 hover:border-blue-200 hover:shadow-sm transition-all">
+                <div className="text-2xl mb-3">{f.icon}</div>
+                <h3 className="font-semibold text-gray-900 mb-2">{f.title}</h3>
+                <p className="text-sm text-gray-500 leading-relaxed">{f.desc}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ── Use cases ── */}
+      <section className="px-6 py-20">
+        <div className="max-w-4xl mx-auto">
+          <div className="text-center mb-14">
+            <h2 className="text-2xl font-bold text-gray-900 mb-3">Who uses it</h2>
+            <p className="text-gray-500">Across departments, anyone who references compliance standards.</p>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {useCases.map((u) => (
+              <div key={u.role} className="rounded-2xl border border-gray-200 p-5">
+                <div className="text-sm font-semibold text-gray-900 mb-2">{u.role}</div>
+                <div className="text-sm text-gray-500 italic">{u.example}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ── CTA ── */}
+      <section className="px-6 py-24 bg-blue-600 text-white text-center">
+        <div className="max-w-2xl mx-auto">
+          <h2 className="text-3xl font-bold mb-4">Ready to see it on your documents?</h2>
+          <p className="text-blue-100 mb-10 text-lg">
+            Try the live demo with NIAHO standards, or get in touch to run a pilot on your own compliance library.
+          </p>
+          <div className="flex flex-col sm:flex-row gap-3 justify-center">
+            <Link
+              href="/demo"
+              className="px-6 py-3 bg-white text-blue-600 font-medium rounded-xl hover:bg-blue-50 transition-colors"
+            >
+              Try Live Demo →
+            </Link>
+            <a
+              href="mailto:rohan.pant14@gmail.com?subject=Agentically — Pilot Request"
+              className="px-6 py-3 bg-blue-500 text-white font-medium rounded-xl border border-blue-400 hover:bg-blue-400 transition-colors"
+            >
+              Request a Pilot
+            </a>
+          </div>
+        </div>
+      </section>
+
+      {/* ── Footer ── */}
+      <footer className="px-6 py-8 border-t border-gray-100 text-center">
+        <div className="max-w-5xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
+          <div className="flex items-center gap-2 text-sm text-gray-400">
+            <span>🏥</span>
+            <span>Healthcare Standards Agent</span>
+          </div>
+          <div className="text-sm text-gray-400">
+            Built by Rohan Pant & Siddhant Rawat
+          </div>
+          <a
+            href="mailto:rohan.pant14@gmail.com"
+            className="text-sm text-gray-400 hover:text-gray-600 transition-colors"
+          >
+            rohan.pant14@gmail.com
+          </a>
+        </div>
+      </footer>
+
     </div>
   );
 }
