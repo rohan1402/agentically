@@ -104,10 +104,4 @@ This parses the PDF, generates embeddings via Voyage AI, and inserts all chunks 
 
 ## Built by
 
-**Rohan Pant** — product & engineering · [rohan.pant14@gmail.com](mailto:rohan.pant14@gmail.com)
-
-**Siddhant Rawat** — sales & marketing
-
----
-
-*Interested in a pilot for your organization? [Get in touch →](mailto:rohan.pant14@gmail.com?subject=Agentically%20Pilot%20Request)*
+**Rohan Pant** · [rohan.pant14@gmail.com](mailto:rohan.pant14@gmail.com)
