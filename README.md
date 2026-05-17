@@ -4,7 +4,7 @@
 
 Agentically lets healthcare staff search accreditation standards in plain English and get precise, cited answers in seconds — no manual PDF searching required.
 
-**Live Demo → [agentically-webui.vercel.app/demo](https://agentically-webui.vercel.app/demo)** &nbsp;|&nbsp; **Landing Page → [agentically-webui.vercel.app](https://agentically-webui.vercel.app)**
+**Landing Page → [agentically-webui.vercel.app](https://agentically-webui.vercel.app)**
 
 ---
 
